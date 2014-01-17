@@ -12,7 +12,110 @@ if RUBY_PLATFORM == 'java'
     describe '#can_unreceive?' do
       subject { client.can_unreceive? }
 
-      it { should_not be_true }
+      it { should be_true }
+    end
+
+    describe '#unreceive' do
+      let(:body) { 'Some body in string form' }
+      let(:message) { double('Message', :headers => msg_headers.merge('destination' => orig_destination), :body => body) }
+      let(:max_redeliveries) { 2 }
+      let(:dlq) { '/queue/some_queue/dlq' }
+      let(:unreceive_headers) do
+        { :dead_letter_queue => dlq, :max_redeliveries => max_redeliveries }
+      end
+      let(:orig_destination) { '/queue/some_queue' }
+
+      # Just to make sure we preserve any headers we don't explicitly get rid of
+      let(:orig_headers) do
+        { 'key1' => 'value1' }
+      end
+
+
+      subject(:unreceive!) { client.unreceive(message, unreceive_headers) }
+
+      context 'with no unreceive[:max_redeliveries] or unreceive[:dead_letter_queue]' do
+        let(:msg_headers) { orig_headers }
+        let(:unreceive_headers) { Hash.new }
+
+        it 'should not resend the message' do
+          client.should_not_receive(:publish)
+
+          unreceive!
+        end
+      end
+
+      context 'On a message with no retry_count in the headers' do
+        let(:msg_headers) { orig_headers }
+
+        it 'should publish it to the same destination with a retry_count of 1' do
+          client.should_receive(:publish) do |dest, the_body, the_headers|
+            expect(dest).to eql orig_destination
+            expect(the_body).to eql body
+            expect(the_headers).to eql msg_headers.merge({'retry_count' => 1})
+          end
+
+          unreceive!
+        end
+      end
+
+      context 'On a message with a retry_count in the headers' do
+        let(:msg_headers) { orig_headers.merge('retry_count' => retry_count) }
+
+        context 'that is less than max_redeliveries' do
+         let(:retry_count) { max_redeliveries - 1 }
+
+          it 'should publish it to the same destination with a retry_count increased by one' do
+            client.should_receive(:publish) do |dest, the_body, the_headers|
+              expect(dest).to eql orig_destination
+              expect(the_body).to eql body
+
+
+              expect(the_headers).to eql msg_headers.merge({'retry_count' => retry_count + 1})
+            end
+
+            unreceive!
+          end
+        end
+
+        # This is the 'last' attempt to redeliver, so don't send it again
+        context 'that is equal to max_redeliveries' do
+         let(:retry_count) { max_redeliveries }
+
+          it 'should publish it to the DLQ with no retry_count' do
+            client.should_receive(:publish) do |dest, the_body, the_headers|
+              expect(the_body).to eql body
+              expect(dest).to eql dlq
+
+              # Headers should eql msg_headers except for retry count,
+              # and original_destination
+              msg_headers.delete('retry_count')
+              msg_headers['original_destination'] = orig_destination
+              expect(the_headers).to eql msg_headers
+            end
+
+            unreceive!
+          end
+        end
+
+        context 'that is greater than max_redeliveries' do
+         let(:retry_count) { max_redeliveries + 1 }
+
+          it 'should publish it to the DLQ with no retry_count' do
+            client.should_receive(:publish) do |dest, the_body, the_headers|
+              expect(the_body).to eql body
+              expect(dest).to eql dlq
+
+              # Headers should eql msg_headers except for retry count,
+              # and original_destination
+              msg_headers.delete('retry_count')
+              msg_headers['original_destination'] = orig_destination
+              expect(the_headers).to eql msg_headers
+            end
+
+            unreceive!
+          end
+        end
+      end
     end
 
     describe '#connect' do
