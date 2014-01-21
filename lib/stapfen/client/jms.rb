@@ -84,7 +84,40 @@ module Stapfen
       end
 
       def can_unreceive?
-        false
+        true
+      end
+
+      # JMS doesn't implement unreceive in quite the way Stomp does, so we'll
+      # implement it here.
+      #
+      # Given a message and a set of unreceive headers, this will deliver the
+      # message back to its originating queue a limited number of times, then
+      # failover to the dead letter queue.
+      #
+      # @param [Stapfen::Message] message The message to unreceive.
+      # @param [Hash] unreceive_headers
+      # @option unreceive_headers [Integer] :max_redeliveries The number of times
+      #   to attempt redelivery.
+      # @option unreceive_headers [String] :dead_letter_queue After giving up on
+      #   redelivering, send the message here.
+      def unreceive(message, unreceive_headers)
+        return if unreceive_headers[:max_redeliveries].nil? && unreceive_headers[:max_redeliveries].nil?
+
+        headers = message.headers
+        retry_count = headers.delete('retry_count').to_i || 0
+        retry_count += 1
+        headers['retry_count'] = retry_count
+
+        destination = headers.delete('destination')
+
+        if unreceive_headers[:max_redeliveries] && (retry_count <= unreceive_headers[:max_redeliveries])
+          self.publish(destination, message.body, headers)
+        elsif unreceive_headers[:dead_letter_queue] # Done retrying, send to DLQ
+          headers['original_destination'] = destination
+          headers.delete('retry_count')
+
+          self.publish(unreceive_headers[:dead_letter_queue], message.body, headers)
+        end
       end
     end
   end
