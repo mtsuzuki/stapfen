@@ -103,20 +103,14 @@ module Stapfen
       def unreceive(message, unreceive_headers)
         return if unreceive_headers[:max_redeliveries].nil? && unreceive_headers[:max_redeliveries].nil?
 
-        headers = message.headers
-        retry_count = headers.delete('retry_count').to_i || 0
-        retry_count += 1
-        headers['retry_count'] = retry_count
-
-        destination = headers.delete('destination')
+        destination = message.destination.to_s.sub('queue://','/queue/').sub('topic://','/topic')
+        retry_count = message.getStringProperty('retry_count').to_i || 0
+        retry_count +=1
 
         if unreceive_headers[:max_redeliveries] && (retry_count <= unreceive_headers[:max_redeliveries])
-          self.publish(destination, message.body, headers)
+          self.publish(destination, message.data, {'retry_count' => retry_count.to_s})
         elsif unreceive_headers[:dead_letter_queue] # Done retrying, send to DLQ
-          headers['original_destination'] = destination
-          headers.delete('retry_count')
-
-          self.publish(unreceive_headers[:dead_letter_queue], message.body, headers)
+          self.publish(unreceive_headers[:dead_letter_queue], message.data, {:original_destination => destination})
         end
       end
     end
