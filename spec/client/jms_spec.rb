@@ -17,7 +17,7 @@ if RUBY_PLATFORM == 'java'
 
     describe '#unreceive' do
       let(:body) { 'Some body in string form' }
-      let(:message) { double('Message', :headers => msg_headers.merge('destination' => orig_destination), :body => body) }
+      let(:message) { double('Message', :destination => orig_destination, :data => body, :getStringProperty => nil) }
       let(:max_redeliveries) { 2 }
       let(:dlq) { '/queue/some_queue/dlq' }
       let(:unreceive_headers) do
@@ -25,16 +25,9 @@ if RUBY_PLATFORM == 'java'
       end
       let(:orig_destination) { '/queue/some_queue' }
 
-      # Just to make sure we preserve any headers we don't explicitly get rid of
-      let(:orig_headers) do
-        { 'key1' => 'value1' }
-      end
-
-
       subject(:unreceive!) { client.unreceive(message, unreceive_headers) }
 
       context 'with no unreceive[:max_redeliveries] or unreceive[:dead_letter_queue]' do
-        let(:msg_headers) { orig_headers }
         let(:unreceive_headers) { Hash.new }
 
         it 'should not resend the message' do
@@ -45,13 +38,15 @@ if RUBY_PLATFORM == 'java'
       end
 
       context 'On a message with no retry_count in the headers' do
-        let(:msg_headers) { orig_headers }
+        before :each do
+          message.stub(:getStringProperty).with('retry_count').and_return(nil)
+        end
 
         it 'should publish it to the same destination with a retry_count of 1' do
           client.should_receive(:publish) do |dest, the_body, the_headers|
             expect(dest).to eql orig_destination
             expect(the_body).to eql body
-            expect(the_headers).to eql msg_headers.merge({'retry_count' => 1})
+            expect(the_headers).to eql({'retry_count' => '1'})
           end
 
           unreceive!
@@ -59,7 +54,10 @@ if RUBY_PLATFORM == 'java'
       end
 
       context 'On a message with a retry_count in the headers' do
-        let(:msg_headers) { orig_headers.merge('retry_count' => retry_count) }
+        before :each do
+          message.stub(:getStringProperty).with('retry_count').and_return(retry_count)
+        end
+
 
         context 'that is less than max_redeliveries' do
          let(:retry_count) { max_redeliveries - 1 }
@@ -70,7 +68,7 @@ if RUBY_PLATFORM == 'java'
               expect(the_body).to eql body
 
 
-              expect(the_headers).to eql msg_headers.merge({'retry_count' => retry_count + 1})
+              expect(the_headers).to eql({'retry_count' => (retry_count + 1).to_s})
             end
 
             unreceive!
@@ -86,11 +84,7 @@ if RUBY_PLATFORM == 'java'
               expect(the_body).to eql body
               expect(dest).to eql dlq
 
-              # Headers should eql msg_headers except for retry count,
-              # and original_destination
-              msg_headers.delete('retry_count')
-              msg_headers['original_destination'] = orig_destination
-              expect(the_headers).to eql msg_headers
+              expect(the_headers).to eql({:original_destination => orig_destination})
             end
 
             unreceive!
@@ -105,11 +99,7 @@ if RUBY_PLATFORM == 'java'
               expect(the_body).to eql body
               expect(dest).to eql dlq
 
-              # Headers should eql msg_headers except for retry count,
-              # and original_destination
-              msg_headers.delete('retry_count')
-              msg_headers['original_destination'] = orig_destination
-              expect(the_headers).to eql msg_headers
+              expect(the_headers).to eql({:original_destination => orig_destination})
             end
 
             unreceive!
