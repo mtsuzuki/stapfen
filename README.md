@@ -77,7 +77,7 @@ care when accessing other shared resources.
 
 The consume block accepts the usual subscriptions headers, as well as two
 additional headers `:dead_letter_queue` and `:max_redeliveries`.  If either of
-the latter two is present, the honsumer will unreceive any messages for which
+the latter two is present, the consumer will unreceive any messages for which
 the block returns `false`; after `:max\_redeliveries`, it will send the message
 to `:dead_letter_queue`.  `consume` blocks without these headers will fail
 silently rather than unreceive.
