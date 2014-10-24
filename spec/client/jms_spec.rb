@@ -12,7 +12,7 @@ if RUBY_PLATFORM == 'java'
     describe '#can_unreceive?' do
       subject { client.can_unreceive? }
 
-      it { should be_true }
+      it { should be true }
     end
 
     describe '#unreceive' do
@@ -158,11 +158,11 @@ if RUBY_PLATFORM == 'java'
           client.stub(:connection).and_return(double('JMS::Connection'))
         end
 
-        it { should be_false }
+        it { should be false }
       end
 
       context 'without a connection' do
-        it { should be_true }
+        it { should be true }
       end
     end
 
@@ -177,7 +177,7 @@ if RUBY_PLATFORM == 'java'
       context 'without an existing session' do
         it 'should close the client' do
           connection.should_receive(:close)
-          expect(result).to be_true
+          expect(result).to be true
         end
       end
 
@@ -191,7 +191,7 @@ if RUBY_PLATFORM == 'java'
         it 'should close the client and session' do
           session.should_receive(:close)
           connection.should_receive(:close)
-          expect(result).to be_true
+          expect(result).to be true
         end
       end
     end

@@ -21,7 +21,7 @@ describe Stapfen::Logger do
       end
 
       it 'should discard info messages' do
-        expect(logger.info('rspec')).to be_false
+        expect(logger.info('rspec')).to be false
       end
     end
 
@@ -34,8 +34,7 @@ describe Stapfen::Logger do
 
       it 'should pass info messages along' do
         plogger.should_receive(:info)
-
-        expect(logger.info('rspec')).to be_true
+        expect(logger.info('rspec')).to be true
       end
     end
   end

@@ -1,7 +1,7 @@
 $LOAD_PATH.unshift(File.expand_path(File.dirname(__FILE__) + '../lib'))
 
 require 'stapfen'
-
+require 'rspec/its'
 
 is_java = (RUBY_PLATFORM == 'java')
 
@@ -12,6 +12,9 @@ end
 
 
 RSpec.configure do |c|
+  c.color = true
+  c.order = "random"
+
   unless is_java
     c.filter_run_excluding :java => true
   end
