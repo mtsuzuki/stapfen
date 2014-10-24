@@ -17,7 +17,7 @@ describe Stapfen::Worker do
       subject(:result) { worker.use_stomp! }
 
       it 'should update the instance variable' do
-        expect(result).to be_true
+        expect(result).to be true
         expect(worker).to be_stomp
         expect(worker).not_to be_jms
       end
@@ -32,7 +32,7 @@ describe Stapfen::Worker do
       end
 
       it 'should update the instance variable' do
-        expect(result).to be_true
+        expect(result).to be true
         expect(worker).to be_jms
         expect(worker).not_to be_stomp
       end
@@ -75,8 +75,16 @@ describe Stapfen::Worker do
     describe '#exit_cleanly' do
       subject(:result) { worker.exit_cleanly }
 
+      before do
+        allow(Java::JavaLang::System).to receive(:exit).with(0)
+      end
+
+      after do
+        worker.class_variable_set(:@@workers, [])
+      end
+
       context 'with no worker classes' do
-        it { should be_false }
+        it { should be false }
       end
 
       context 'with a single worker class' do
@@ -88,12 +96,12 @@ describe Stapfen::Worker do
 
         it "should execute the worker's #exit_cleanly method" do
           w.should_receive(:exit_cleanly)
-          expect(result).to be_true
+          expect(result).to be true
         end
 
         it "should return false if the worker's #exit_cleanly method" do
           w.should_receive(:exit_cleanly).and_raise(StandardError)
-          expect(result).to be_false
+          expect(result).to be false
         end
       end
 
@@ -101,14 +109,14 @@ describe Stapfen::Worker do
         let(:w1) { double('Fake Worker 1') }
         let(:w2) { double('Fake Worker 2') }
 
-        before :each do
+        before do
           worker.class_variable_set(:@@workers, [w1, w2])
         end
 
         it 'should invoke both #exit_cleanly methods' do
-          w1.should_receive(:exit_cleanly)
-          w2.should_receive(:exit_cleanly)
-          expect(result).to be_true
+          expect(w1).to receive(:exit_cleanly)
+          expect(w2).to receive(:exit_cleanly)
+          expect(worker.exit_cleanly).to be true
         end
       end
     end
@@ -124,6 +132,10 @@ describe Stapfen::Worker do
 
       context 'with just a queue name' do
         let(:name) { 'jms.queue.lol' }
+
+        before do
+          worker.instance_variable_set(:@consumers, [])
+        end
 
         it 'should add an entry for the queue name' do
           worker.consume(name) do |msg|
@@ -163,6 +175,16 @@ describe Stapfen::Worker do
           client.stub(:subscribe) do |name, headers, &block|
             block.call(message)
           end
+
+          config = {:valid => true}
+
+          worker.configure do
+            config
+          end
+        end
+
+        after do
+          worker.class_variable_set(:@@workers, [])
         end
 
         context 'with just a queue name' do
@@ -189,6 +211,7 @@ describe Stapfen::Worker do
             { :dead_letter_queue => '/queue/foo',
             :max_redeliveries => 3 }
           end
+
           let(:raw_headers) { unrec_headers.merge(:other_header => 'foo!') }
           context 'on a failed message' do
             it 'should unreceive' do
