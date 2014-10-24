@@ -1,14 +1,13 @@
-
 module Stapfen
   class Message
     attr_reader :message_id, :body, :original, :destination
 
     def initialize(opts={})
       super()
-      @body = opts[:body]
+      @body        = opts[:body]
       @destination = opts[:destination]
-      @message_id = opts[:message_id]
-      @original = opts[:original]
+      @message_id  = opts[:message_id]
+      @original    = opts[:original]
     end
 
     # Create an instance of {Stapfen::Message} from the passed in
@@ -41,6 +40,19 @@ module Stapfen
                       :destination => message.jms_destination.getQualifiedName,
                       :message_id => message.jms_message_id,
                       :original => message)
+    end
+
+    # Create an instance of {Stapfen::Message} from the passed in
+    # +String+ which a Kafka consumer should receive
+    #
+    # @param [String] message
+    # @return [Stapfen::Message] A Stapfen wrapper object
+    def self.from_kafka(message)
+      unless message.kind_of? String
+        raise Stapfen::InvalidMessageError, message.inspect
+      end
+
+      return self.new(:body => message)
     end
   end
 end

@@ -47,12 +47,12 @@ module Stapfen
         raise
       end
 
-      @use_stomp = true
+      @protocol = 'stomp'
       return true
     end
 
     def self.stomp?
-      @use_stomp.nil? || @use_stomp
+      @protocol.nil? || @protocol == 'stomp'
     end
 
     # Force the worker to use JMS as the messaging protocol.
@@ -73,12 +73,38 @@ module Stapfen
         raise
       end
 
-      @use_stomp = false
+      @protocol = 'jms'
       return true
     end
 
     def self.jms?
-      !(stomp?)
+      @protocol == 'jms'
+    end
+
+    # Force the worker to use Kafka as the messaging protocol.
+    #
+    # *Note:* Only works under JRuby
+    #
+    # @return [Boolean]
+    def self.use_kafka!
+      unless RUBY_PLATFORM == 'java'
+        raise Stapfen::ConfigurationError, "You cannot use Kafka unless you're running under JRuby!"
+      end
+
+      begin
+        require 'java'
+        require 'hermann'
+      rescue LoadError
+        puts "You need the `hermann` gem to be installed to use Kafka!"
+        raise
+      end
+
+      @protocol = 'kafka'
+      return true
+    end
+
+    def self.kafka?
+      @protocol == 'kafka'
     end
 
     # Optional method, should be passed a block which will yield a {{Logger}}
@@ -164,6 +190,9 @@ module Stapfen
       elsif self.class.jms?
         require 'stapfen/client/jms'
         @client = Stapfen::Client::JMS.new(self.class.configuration.call)
+      elsif self.class.kafka?
+        require 'stapfen/client/kafka'
+        @client = Stapfen::Client::Kafka.new(self.class.configuration.call)
       end
 
       debug("Running with #{@client} inside of Thread:#{Thread.current.inspect}")
@@ -190,6 +219,10 @@ module Stapfen
 
           if self.class.jms?
             message = Stapfen::Message.from_jms(m)
+          end
+
+          if self.class.kafka?
+            message = Stapfen::Message.from_kafka(m)
           end
 
           success = self.send(method_name, message)

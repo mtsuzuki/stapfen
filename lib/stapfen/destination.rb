@@ -40,6 +40,10 @@ module Stapfen
       end
     end
 
+    def as_kafka
+      return name
+    end
+
     # Create a {Stapfen::Destination} from the given string
     #
     # @param [String] name
