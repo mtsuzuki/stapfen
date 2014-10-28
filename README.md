@@ -97,3 +97,10 @@ Or install it yourself as:
 
     $ gem install stapfen
 
+## Running Specs
+
+Download this from jar from Maven Central
+  * [activemq-all-5.8.0.jar](http://search.maven.org/#artifactdetails%7Corg.apache.activemq%7Cactivemq-all%7C5.8.0%7Cjar)
+  * Put it in gem root
+  * ```rake spec```
+
