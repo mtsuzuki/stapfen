@@ -5,6 +5,19 @@ describe Stapfen::Destination do
   it { should respond_to :name }
   it { should respond_to :type }
 
+  describe '#as_kafka' do
+    let(:name) { 'topic' }
+    subject(:destination) do
+      d = described_class.new
+      d.type = :topic
+      d.name = name
+      d.as_kafka
+    end
+
+    it { should be_instance_of String }
+    it { should eql "topic" }
+  end
+
   describe '#as_jms' do
     let(:name) { 'rspec/dlq' }
     subject(:destination) do

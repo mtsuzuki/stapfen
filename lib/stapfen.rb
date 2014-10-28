@@ -11,7 +11,6 @@ rescue LoadError
   # Can't process JMS
 end
 
-
 require 'stapfen/version'
 require 'stapfen/client'
 require 'stapfen/worker'

@@ -55,6 +55,7 @@ describe Stapfen::Worker do
     end
 
     describe '#configure' do
+      let(:config) { {:valid => true} }
       it 'should error when not passed a block' do
         expect {
           worker.configure
@@ -62,12 +63,9 @@ describe Stapfen::Worker do
       end
 
       it 'should save the return value from the block' do
-        config = {:valid => true}
-
         worker.configure do
           config
         end
-
         expect(worker.configuration.call).to eql(config)
       end
     end

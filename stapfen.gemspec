@@ -3,17 +3,22 @@ lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'stapfen/version'
 
-Gem::Specification.new do |gem|
-  gem.name          = "stapfen"
-  gem.version       = Stapfen::VERSION
-  gem.authors       = ["R. Tyler Croy"]
-  gem.email         = ["rtyler.croy@lookout.com"]
-  gem.description   = "A simple gem for writing good basic STOMP workers"
-  gem.summary       = "A simple gem for writing good basic STOMP workers"
-  gem.homepage      = ""
+Gem::Specification.new do |s|
+  s.name          = "stapfen"
+  s.version       = Stapfen::VERSION
+  s.authors       = ["R. Tyler Croy"]
+  s.email         = ["rtyler.croy@lookout.com"]
+  s.description   = "A simple gem for writing good basic STOMP workers"
+  s.summary       = "A simple gem for writing good basic STOMP workers"
+  s.homepage      = ""
 
-  gem.files         = `git ls-files`.split($/)
-  gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
-  gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
-  gem.require_paths = ["lib"]
+  s.files         = `git ls-files`.split($/)
+  s.executables   = s.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
+  s.test_files    = s.files.grep(%r{^(test|spec|features)/})
+  s.require_paths = ["lib"]
+
+  if RUBY_PLATFORM == "java"
+    s.add_dependency 'hermann', "~>0.18.1"
+    s.platform = 'java'
+  end
 end
