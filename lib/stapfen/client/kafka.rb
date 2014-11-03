@@ -1,5 +1,12 @@
-require 'hermann'
-require 'hermann/consumer'
+begin
+  require 'hermann'
+  require 'hermann/consumer'
+rescue LoadError => e
+  if RUBY_PLATFORM == 'java'
+    raise
+  end
+end
+
 require 'stapfen/destination'
 
 module Stapfen

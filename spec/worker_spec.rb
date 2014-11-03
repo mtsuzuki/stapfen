@@ -70,7 +70,7 @@ describe Stapfen::Worker do
       end
     end
 
-    describe '#exit_cleanly' do
+    describe '#exit_cleanly', :java => true do
       subject(:result) { worker.exit_cleanly }
 
       before do
