@@ -67,6 +67,33 @@ is expected to be a valid [configuration
 hash](https://github.com/reidmorrison/jruby-jms#consumer) for the
 [jruby-jms](https://github.com/reidmorrison/jruby-jms) gem.
 
+#### Kafka example
+
+Using with Kafka requires a configuration with the topic, groupID, and zookeepers string.
+
+```ruby
+require 'stapfen'
+require 'stapfen/worker'
+
+class MyWorker < Stapfen::Worker
+  use_kafka!
+
+  configure do
+    {
+      :topic => 'test',
+      :groupId => 'groupId',
+      :zookeepers => 'localhost:2181'
+    }
+  end
+
+  # /topic/test - topic says its a topic, test is the actual topic name
+  consume '/topic/test' do |message|
+    puts "Recv: #{message.body}"
+  end
+end
+
+MyWorker.run!
+```
 ---
 
 It is also important to note that the `consume` block will be invoked inside an
