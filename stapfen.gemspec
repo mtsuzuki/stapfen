@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
 
   if RUBY_PLATFORM == "java"
-    s.add_dependency 'hermann', "~>0.18.1"
+    s.add_dependency 'hermann', "~> 0.20.0"
     s.platform = 'java'
   end
 end
