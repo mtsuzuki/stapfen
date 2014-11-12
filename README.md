@@ -80,9 +80,9 @@ class MyWorker < Stapfen::Worker
 
   configure do
     {
-      :topic => 'test',
+      :topic => 'test',               # not required
       :groupId => 'groupId',
-      :zookeepers => 'localhost:2181'
+      :zookeepers => 'localhost:2181' # comma separated string of zookeepers
     }
   end
 

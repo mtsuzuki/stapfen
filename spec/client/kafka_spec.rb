@@ -14,6 +14,22 @@ describe Stapfen::Client::Kafka, :java => true do
 
   it { should respond_to :connect }
 
+
+  describe '#initialize' do
+    context 'with valid input params' do
+      it 'should be a object' do
+        expect(client).to be_a described_class
+      end
+    end
+
+    context 'without valid input params' do
+      let(:config) { {} }
+      it 'should raise error' do
+        expect{ client }.to raise_error(Stapfen::ConfigurationError)
+      end
+    end
+  end
+
   describe '#can_unreceive?' do
     subject { client.can_unreceive? }
     it { should be false }
