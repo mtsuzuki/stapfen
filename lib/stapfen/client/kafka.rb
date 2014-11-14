@@ -42,6 +42,14 @@ module Stapfen
         false
       end
 
+      # API compatibilty method, doesn't actually indicate that the connection
+      # is closed. Will only return true if no connection currently exists
+      #
+      # @return [Boolean]
+      def closed?
+        return connection.nil?
+      end
+
       # Closes the consumer threads created by kafka.
       #
       # @return [Boolean] True/false depending on whether we actually closed

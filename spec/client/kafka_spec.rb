@@ -53,6 +53,24 @@ describe Stapfen::Client::Kafka, :java => true do
     end
   end
 
+  describe '#closed?' do
+    subject(:result) { client.closed? }
+
+    context 'if a connection exists' do
+      before :each do
+        client.stub(:connection) { double('KAFKA::Connection') }
+      end
+      it { should be false }
+    end
+
+    context 'without a connection' do
+      before :each do
+        client.stub(:connection) { nil }
+      end
+      it { should be true }
+    end
+  end
+
   describe '#subscribe' do
     let(:topic) { 'topic' }
     let(:destination) { double('Destination') }
