@@ -1,10 +1,11 @@
 require 'spec_helper'
-
+require 'hermann/consumer'
 require 'stapfen/client/kafka'
 
+
 describe Stapfen::Client::Kafka, :java => true do
-  let(:config)   { { :topic => 'test', :groupId => 'groupId', :zookeepers => 'foo' } }
-  let(:consumer) { double('Hermann::Consumer') }
+  let(:config)           { { :topic => 'test', :groupId => 'groupId', :zookeepers => 'foo' } }
+  let(:consumer)         { double('Hermann::Consumer') }
 
   subject(:client) { described_class.new(config) }
 
@@ -14,10 +15,20 @@ describe Stapfen::Client::Kafka, :java => true do
 
   it { should respond_to :connect }
 
-
   describe '#initialize' do
     context 'with valid input params' do
+      let(:hermann_opts)     { { :do_retry => false } }
+      let(:opts)             { { :consumer_opts => hermann_opts } }
+      let(:config_with_opts) { config.merge(opts) }
+
+      subject(:client) { described_class.new(config_with_opts) }
+
       it 'should be a object' do
+        expect(Hermann::Consumer).to receive(:new).with(
+          config[:topic],
+          config[:groupId],
+          config[:zookeepers],
+          hermann_opts)
         expect(client).to be_a described_class
       end
     end
@@ -58,14 +69,14 @@ describe Stapfen::Client::Kafka, :java => true do
 
     context 'if a connection exists' do
       before :each do
-        client.stub(:connection) { double('KAFKA::Connection') }
+        allow(client).to receive(:connection) { double('KAFKA::Connection') }
       end
       it { should be false }
     end
 
     context 'without a connection' do
       before :each do
-        client.stub(:connection) { nil }
+        allow(client).to receive(:connection) { nil }
       end
       it { should be true }
     end

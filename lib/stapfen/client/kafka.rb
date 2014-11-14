@@ -20,6 +20,7 @@ module Stapfen
       # @option configuration [String] :topic The kafka topic
       # @option configuration [String] :groupId The kafka groupId
       # @option configuration [String] :zookeepers Comma separated list of zookeepers
+      # @option configuration [Hash]   :consumer_opts Options for Hermann consumer
       #
       # @raises [ConfigurationError] if required configs are not present
       def initialize(configuration)
@@ -28,8 +29,9 @@ module Stapfen
         @topic      = @config[:topic]
         @groupId    = @config[:groupId]
         @zookeepers = @config[:zookeepers]
+        opts        = @config[:consumer_opts]
         raise ConfigurationError unless @groupId && @zookeepers
-        @connection = Hermann::Consumer.new(@topic, @groupId, @zookeepers)
+        @connection = Hermann::Consumer.new(@topic, @groupId, @zookeepers, opts)
       end
 
       # This method is not implemenented
