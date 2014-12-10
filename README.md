@@ -100,6 +100,8 @@ It is also important to note that the `consume` block will be invoked inside an
 **instance** of `MyWorker` and will execute inside its own `Thread`, so take
 care when accessing other shared resources.
 
+Also note you'll need to include the zk gem manually.
+
 ### Fallback and dead-letter-queue support
 
 The consume block accepts the usual subscriptions headers, as well as two
