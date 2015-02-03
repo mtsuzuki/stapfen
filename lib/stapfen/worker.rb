@@ -1,4 +1,3 @@
-require 'stomp'
 require 'stapfen/logger'
 require 'stapfen/destination'
 require 'stapfen/message'
