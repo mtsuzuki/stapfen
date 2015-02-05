@@ -94,6 +94,10 @@ end
 
 MyWorker.run!
 ```
+
+##### Notes
+* Start consumer first, second start producer (don't use string encoding)
+* using the same group causes kafka messages to be appended to that group
 ---
 
 It is also important to note that the `consume` block will be invoked inside an
