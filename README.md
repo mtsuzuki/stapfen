@@ -96,8 +96,17 @@ MyWorker.run!
 ```
 
 ##### Notes
-* Start consumer first, second start producer (don't use string encoding)
-* using the same group causes kafka messages to be appended to that group
+* Testing with Kafka
+  * Start Staphen worker first
+  * Using producer included with kafka
+    * Produce some messages
+      * ```echo foobar | bin/kafka-console-producer.sh --broker-list <brokers> --topic <topic>```
+    * Worker should be able to read the message
+* using the same groupId a consumer will start reading from the last offset that was read by a consumer from the same group
+  * For example, Given 2 consumers belong to the same groupId
+    * Consumer1 reads a few messages and dies
+    * A producer produces 5 messages
+    * Consumer2 starts up and will receive the 5 messages produced because it started at the last offset of Consumer1
 
 ---
 
