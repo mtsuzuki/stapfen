@@ -1,10 +1,8 @@
-require 'stapfen/logger'
 require 'stapfen/destination'
 require 'stapfen/message'
 
 module Stapfen
   class Worker
-    include Stapfen::Logger
 
     # Class variables!
     @@signals_handled = false
@@ -33,6 +31,10 @@ module Stapfen
         raise Stapfen::ConfigurationError
       end
       @configuration = block
+    end
+
+    def logger
+      @logger ||= Stapfen.logger
     end
 
     # Force the worker to use STOMP as the messaging protocol (default)
