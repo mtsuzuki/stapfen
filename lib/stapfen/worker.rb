@@ -30,6 +30,15 @@ module Stapfen
         worker.run
       end
 
+      # Main message consumption block
+      def consume(config_overrides={}, &consume_block)
+        unless block_given?
+          raise Stapfen::ConsumeError, "Method `consume` requires a block"
+        end
+        @consumers ||= []
+        @consumers << [config_overrides, consume_block]
+      end
+
       # Optional method, specifes a block to execute when the worker is shutting
       # down.
       def shutdown(&block)
@@ -181,14 +190,6 @@ module Stapfen
       return true
     end
 
-    # Main message consumption block
-    def self.consume(queue_name, headers={}, &block)
-      unless block_given?
-        raise Stapfen::ConsumeError, "Cannot consume #{queue_name} without a block!"
-      end
-      @consumers ||= []
-      @consumers << [queue_name, headers, block]
-    end
     def kafka?
       @protocol == KAFKA
     end
