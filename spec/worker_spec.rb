@@ -7,8 +7,10 @@ end
 describe Stapfen::Worker do
 
   after(:each) do
-    # Prevents shared state between tests
+    # These variables will persist between tests unless they're
+    # explicitly cleared. Also see `set_class_variable_defaults`.
     described_class.set_class_variable_defaults
+    described_class.consumers = nil
     if described_class.const_defined?(:RUBY_PLATFORM, false)
       described_class.send(:remove_const, :RUBY_PLATFORM)
     end
@@ -40,8 +42,17 @@ describe Stapfen::Worker do
   end
 
   describe '.consume(config_overrides={}, &block)' do
-    it 'consumes' do
-      # new things
+    it 'adds the given block and config to @consumers array' do
+      example_proc = Proc.new {}
+      example_hash = double('hash')
+      described_class.consume(example_hash, &example_proc)
+      expect(described_class.consumers.first).to be_an(Array)
+      expect(described_class.consumers.first.first).to be example_hash
+      expect(described_class.consumers.first.last).to be example_proc
+    end
+
+    it 'raises a Stapfen::ConsumeError when called without a block' do
+      expect { described_class.consume }.to raise_error(Stapfen::ConsumeError)
     end
   end
 
