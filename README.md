@@ -20,10 +20,11 @@ Consider the following `myworker.rb` file:
 
 ```ruby
 class MyWorker < Stapfen::Worker
-  use_stomp!
-
-  configure do
-    {
+  configure do |worker|
+    # You can also specify your own logger, but this is the default...
+    worker.logger = Logger.new(STDOUT)
+    worker.protocol = STOMP
+    worker.client_options = {
       :hosts => [
         {
           :host => 'localhost',
@@ -32,18 +33,14 @@ class MyWorker < Stapfen::Worker
           :passcode => 'guest',
           :ssl => false
         }
-      ]
+      ],
+      :topic => 'thequeue',
+      :dead_letter_queue => '/queue/dlq',
+      :max_redeliveries => 0
     }
   end
 
-  # [Optional] Set up a logger for each worker instance
-  log do
-    Logger.new(STDOUT)
-  end
-
-  consume 'thequeue', :dead_letter_queue => '/queue/dlq',
-                      :max_redeliveries => 0 do |message|
-
+  consume do |message|
     data = expensive_computation(message.body)
     # Save my data, or do something worker-specific with it
     persist(data)
@@ -57,13 +54,10 @@ end
 MyWorker.run!
 ```
 
+When using the STOMP protocol, `worker.client_options` can be set with any of the attributes described in a `Stomp::Client` [connection
+hash](https://github.com/stompgem/stomp#hash-login-example-usage-this-is-the-recommended-login-technique) as well as any `subscription` options.
 
-When using the STOMP protocol, the value returned from the `configure` block is expected to be a valid
-`Stomp::Client` [connection
-hash](https://github.com/stompgem/stomp#hash-login-example-usage-this-is-the-recommended-login-technique).
-
-In the case of the JMS protocol, the value returned from the `configure` block
-is expected to be a valid [configuration
+When using the JMS protocol, `worker.client_options` can be set with any of the attributes described in [configuration
 hash](https://github.com/reidmorrison/jruby-jms#consumer) for the
 [jruby-jms](https://github.com/reidmorrison/jruby-jms) gem.
 
@@ -76,18 +70,18 @@ require 'stapfen'
 require 'stapfen/worker'
 
 class MyWorker < Stapfen::Worker
-  use_kafka!
-
-  configure do
-    {
-      :topic => 'test',               # not required
+  configure do |worker|
+    # You can also specify your own logger, but this is the default...
+    worker.logger = Logger.new(STDOUT)
+    worker.protocol = KAFKA
+    worker.client_options = {
+      :topic => 'test',
       :groupId => 'groupId',
       :zookeepers => 'localhost:2181' # comma separated string of zookeepers
     }
   end
 
-  # /topic/test - topic says its a topic, test is the actual topic name
-  consume '/topic/test' do |message|
+  consume do |message|
     puts "Recv: #{message.body}"
   end
 end
@@ -124,7 +118,6 @@ the latter two is present, the consumer will unreceive any messages for which
 the block returns `false`; after `:max_redeliveries`, it will send the message
 to `:dead_letter_queue`.  `consume` blocks without these headers will fail
 silently rather than unreceive.
-
 
 ## Installation
 

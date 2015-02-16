@@ -1,57 +1,145 @@
-require 'stapfen/logger'
 require 'stapfen/destination'
 require 'stapfen/message'
 
 module Stapfen
   class Worker
-    include Stapfen::Logger
+    KAFKA = :kafka.freeze
+    STOMP = :stomp.freeze
+    JMS = :jms.freeze
 
-    # Class variables!
-    @@signals_handled = false
-    @@workers = []
+    attr_accessor :client_options, :protocol, :logger, :stapfen_client
 
     class << self
-      attr_accessor :configuration, :consumers, :logger, :destructor
-    end
+      attr_accessor :instance_configuration, :consumers, :destructor
 
-    # Instantiate a new +Worker+ instance and run it
-    def self.run!
-      worker = self.new
-
-      @@workers << worker
-
-      handle_signals
-
-      worker.run
-    end
-
-    # Expects a block to be passed which will yield the appropriate
-    # configuration for the Stomp gem. Whatever the block yields will be passed
-    # directly into the {{Stomp::Client#new}} method
-    def self.configure(&block)
-      unless block_given?
-        raise Stapfen::ConfigurationError
+      def configure(&configuration_block)
+        unless block_given?
+          raise Stapfen::ConfigurationError, "Method `configure` requires a block"
+        end
+        self.instance_configuration = configuration_block
       end
-      @configuration = block
+
+      # Instantiate a new +Worker+ instance and run it
+      def run!
+        worker = self.new
+
+        @@workers << worker
+
+        handle_signals
+
+        worker.run
+      end
+
+      # Main message consumption block
+      def consume(config_overrides={}, &consume_block)
+        unless block_given?
+          raise Stapfen::ConsumeError, "Method `consume` requires a block"
+        end
+        @consumers ||= []
+        @consumers << [config_overrides, consume_block]
+      end
+
+      # Optional method, specifes a block to execute when the worker is shutting
+      # down.
+      def shutdown(&block)
+        @destructor = block
+      end
+
+      # Return all the currently running Stapfen::Worker instances in this
+      # process
+      def workers
+        @@workers
+      end
+
+      # Invoke +exit_cleanly+ on each of the registered Worker instances that
+      # this class is keeping track of
+      #
+      # @return [Boolean] Whether or not we've exited/terminated cleanly
+      def exit_cleanly
+        return false if workers.empty?
+
+        cleanly = true
+        workers.each do |w|
+          begin
+            w.exit_cleanly
+          rescue StandardError => ex
+            $stderr.write("Failure while exiting cleanly #{ex.inspect}\n#{ex.backtrace}")
+            cleanly = false
+          end
+        end
+
+        if RUBY_PLATFORM == 'java'
+          Stapfen.logger.info 'Telling the JVM to exit cleanly'
+          Java::JavaLang::System.exit(0)
+        end
+
+        return cleanly
+      end
+
+      # Utility method to set up the proper worker signal handlers
+      def handle_signals
+        return if @@signals_handled
+
+        Signal.trap(:INT) do
+          self.exit_cleanly
+          exit!
+        end
+
+        Signal.trap(:TERM) do
+          self.exit_cleanly
+        end
+
+        @@signals_handled = true
+      end
+
+      # Class variables are put in this method to allow for "reset" style
+      # functionality if needed. Useful for testing (see worker_spec.rb).
+      def set_class_variable_defaults
+        @@signals_handled = false
+        @@workers = []
+      end
+
+    end
+
+    set_class_variable_defaults
+
+    ############################################################################
+    # Instance Methods
+    ############################################################################
+
+    def initialize
+      instance_configuration = self.class.instance_configuration
+      if instance_configuration
+        self.configure &instance_configuration
+      end
+      self.client_options ||= {}
+    end
+
+    def configure(&configuration_block)
+      self.instance_eval &configuration_block
+    end
+
+    def logger
+      @logger ||= Stapfen.logger
     end
 
     # Force the worker to use STOMP as the messaging protocol (default)
     #
     # @return [Boolean]
-    def self.use_stomp!
+    def use_stomp!
       begin
         require 'stomp'
       rescue LoadError
-        puts "You need the `stomp` gem to be installed to use stomp!"
+        Stapfen.logger.info 'You need the `stomp` gem to be installed to use stomp!'
         raise
       end
 
-      @protocol = 'stomp'
+      @protocol = STOMP
       return true
     end
 
-    def self.stomp?
-      @protocol.nil? || @protocol == 'stomp'
+    def stomp?
+      @protocol.nil? || @protocol == STOMP
     end
 
     # Force the worker to use JMS as the messaging protocol.
@@ -59,25 +147,25 @@ module Stapfen
     # *Note:* Only works under JRuby
     #
     # @return [Boolean]
-    def self.use_jms!
+    def use_jms!
       unless RUBY_PLATFORM == 'java'
-        raise Stapfen::ConfigurationError, "You cannot use JMS unless you're running under JRuby!"
+        raise Stapfen::ConfigurationError, 'You cannot use JMS unless you are running under JRuby!'
       end
 
       begin
         require 'java'
         require 'jms'
       rescue LoadError
-        puts "You need the `jms` gem to be installed to use JMS!"
+        Stapfen.logger.info 'You need the `jms` gem to be installed to use JMS!'
         raise
       end
 
-      @protocol = 'jms'
+      @protocol = JMS
       return true
     end
 
-    def self.jms?
-      @protocol == 'jms'
+    def jms?
+      @protocol == JMS
     end
 
     # Force the worker to use Kafka as the messaging protocol.
@@ -85,158 +173,81 @@ module Stapfen
     # *Note:* Only works under JRuby
     #
     # @return [Boolean]
-    def self.use_kafka!
+    def use_kafka!
       unless RUBY_PLATFORM == 'java'
-        raise Stapfen::ConfigurationError, "You cannot use Kafka unless you're running under JRuby!"
+        raise Stapfen::ConfigurationError, 'You cannot use Kafka unless you are running under JRuby!'
       end
 
       begin
         require 'java'
         require 'hermann'
       rescue LoadError
-        puts "You need the `hermann` gem to be installed to use Kafka!"
+        Stapfen.logger.info 'You need the `hermann` gem to be installed to use Kafka!'
         raise
       end
 
-      @protocol = 'kafka'
+      @protocol = KAFKA
       return true
     end
 
-    def self.kafka?
-      @protocol == 'kafka'
+    def kafka?
+      @protocol == KAFKA
     end
-
-    # Optional method, should be passed a block which will yield a {{Logger}}
-    # instance for the Stapfen worker to use
-    def self.log(&block)
-      @logger = block
-    end
-
-    # Main message consumption block
-    def self.consume(queue_name, headers={}, &block)
-      unless block_given?
-        raise Stapfen::ConsumeError, "Cannot consume #{queue_name} without a block!"
-      end
-      @consumers ||= []
-      @consumers << [queue_name, headers, block]
-    end
-
-    # Optional method, specifes a block to execute when the worker is shutting
-    # down.
-    def self.shutdown(&block)
-      @destructor = block
-    end
-
-    # Return all the currently running Stapfen::Worker instances in this
-    # process
-    def self.workers
-      @@workers
-    end
-
-    # Invoke +exit_cleanly+ on each of the registered Worker instances that
-    # this class is keeping track of
-    #
-    # @return [Boolean] Whether or not we've exited/terminated cleanly
-    def self.exit_cleanly
-      return false if workers.empty?
-
-      cleanly = true
-      workers.each do |w|
-        begin
-          w.exit_cleanly
-        rescue StandardError => ex
-          $stderr.write("Failure while exiting cleanly #{ex.inspect}\n#{ex.backtrace}")
-          cleanly = false
-        end
-      end
-
-      if RUBY_PLATFORM == 'java'
-        info "Telling the JVM to exit cleanly"
-        Java::JavaLang::System.exit(0)
-      end
-
-      return cleanly
-    end
-
-    # Utility method to set up the proper worker signal handlers
-    def self.handle_signals
-      return if @@signals_handled
-
-      Signal.trap(:INT) do
-        self.exit_cleanly
-        exit!
-      end
-
-      Signal.trap(:TERM) do
-        self.exit_cleanly
-      end
-
-      @@signals_handled = true
-    end
-
-
-
-    ############################################################################
-    # Instance Methods
-    ############################################################################
-
-    attr_accessor :client
 
     def run
-      if self.class.stomp?
+      if stomp?
         require 'stapfen/client/stomp'
-        @client = Stapfen::Client::Stomp.new(self.class.configuration.call)
-      elsif self.class.jms?
+        stapfen_client = Stapfen::Client::Stomp.new(client_options)
+      elsif jms?
         require 'stapfen/client/jms'
-        @client = Stapfen::Client::JMS.new(self.class.configuration.call)
-      elsif self.class.kafka?
+        stapfen_client = Stapfen::Client::JMS.new(client_options)
+      elsif kafka?
         require 'stapfen/client/kafka'
-        @client = Stapfen::Client::Kafka.new(self.class.configuration.call)
+        stapfen_client = Stapfen::Client::Kafka.new(client_options)
       end
 
-      debug("Running with #{@client} inside of Thread:#{Thread.current.inspect}")
+      logger.info("Running with #{stapfen_client} inside of Thread:#{Thread.current.inspect}")
 
-      @client.connect
+      stapfen_client.connect
 
-      self.class.consumers.each do |name, headers, block|
-        unreceive_headers = {}
-        [:max_redeliveries, :dead_letter_queue].each do |sym|
-          unreceive_headers[sym] = headers[sym] if headers.has_key? sym
-        end
+      self.class.consumers.each do |config_overrides, block|
+        consumer_config = client_options.merge(config_overrides)
+        consumer_topic = consumer_config[:topic]
+        consumer_can_unreceive = !(consumer_config.keys & [:max_redeliveries, :dead_letter_queue]).empty?
 
         # We're taking each block and turning it into a method so that we can
         # use the instance scope instead of the blocks originally bound scope
         # which would be at a class level
-        method_name = name.gsub(/[.|\-]/, '_').to_sym
-        self.class.send(:define_method, method_name, &block)
+        methodized_topic = consumer_topic.gsub(/[.|\-]/, '_').to_sym
+        self.class.send(:define_method, methodized_topic, &block)
 
-        client.subscribe(name, headers) do |m|
-          message = nil
-          if self.class.stomp?
-            message = Stapfen::Message.from_stomp(m)
+        stapfen_client.subscribe(consumer_topic, consumer_config) do |message_entity|
+          stapfen_message = nil
+          if stomp?
+            stapfen_message = Stapfen::Message.from_stomp(message_entity)
           end
 
-          if self.class.jms?
-            message = Stapfen::Message.from_jms(m)
+          if jms?
+            stapfen_message = Stapfen::Message.from_jms(message_entity)
           end
 
-          if self.class.kafka?
-            message = Stapfen::Message.from_kafka(m)
+          if kafka?
+            stapfen_message = Stapfen::Message.from_kafka(message_entity)
           end
 
-          success = self.send(method_name, message)
+          success = self.send(methodized_topic, stapfen_message)
 
           unless success
-            if client.can_unreceive? && !unreceive_headers.empty?
-              client.unreceive(m, unreceive_headers)
+            if stapfen_client.can_unreceive? && consumer_can_unreceive
+              stapfen_client.unreceive(message_entity, consumer_config)
             end
           end
         end
       end
 
       begin
-        client.runloop
-        warn("Exiting the runloop for #{self}")
+        stapfen_client.runloop
+        logger.info("Exiting the runloop for #{self}")
       rescue Interrupt
         exit_cleanly
       end
@@ -245,19 +256,19 @@ module Stapfen
     # Invokes the shutdown block if it has been created, and closes the
     # {{Stomp::Client}} connection unless it has already been shut down
     def exit_cleanly
-      info("#{self} exiting ")
+      logger.info("#{self} exiting ")
       self.class.destructor.call if self.class.destructor
 
-      info "Killing client"
+      logger.info 'Killing client'
       begin
         # Only close the client if we have one sitting around
-        if client
-          unless client.closed?
-            client.close
+        if stapfen_client
+          unless stapfen_client.closed?
+            stapfen_client.close
           end
         end
       rescue StandardError => exc
-        error "Exception received while trying to close client! #{exc.inspect}"
+        logger.error "Exception received while trying to close client! #{exc.inspect}"
       end
     end
   end

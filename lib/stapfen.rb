@@ -16,10 +16,22 @@ require 'stapfen/client'
 require 'stapfen/worker'
 
 module Stapfen
-  class ConfigurationError < StandardError
+  class ConfigurationError < StandardError; end
+  class ConsumeError < StandardError; end
+  class InvalidMessageError < StandardError; end
+
+  def self.logger=(instance)
+    @logger = instance
   end
-  class ConsumeError < StandardError
+
+  def self.logger
+    @logger ||= default_logger
   end
-  class InvalidMessageError < StandardError
+
+  private
+
+  def self.default_logger
+    require 'logger'
+    Logger.new(STDOUT)
   end
 end
