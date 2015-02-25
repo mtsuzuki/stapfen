@@ -84,15 +84,12 @@ describe Stapfen::Client::Kafka, :java => true do
 
   describe '#subscribe' do
     let(:topic) { 'topic' }
-    let(:destination) { double('Destination') }
     let(:msg) { 'foo' }
     it 'yields to the block and passes in consumed message' do
-      allow(destination).to receive(:as_kafka) { topic }
-      allow(Stapfen::Destination).to receive(:from_string) { destination }
       allow(consumer).to receive(:consume).with(topic).and_yield(msg)
 
       expect{ |b|
-        client.subscribe(destination, nil, &b)
+        client.subscribe(topic, nil, &b)
       }.to yield_with_args(msg)
     end
   end
