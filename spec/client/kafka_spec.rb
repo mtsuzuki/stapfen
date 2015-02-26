@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'hermann/consumer'
 require 'stapfen/client/kafka'
 
 

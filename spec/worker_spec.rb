@@ -4,6 +4,19 @@ require 'stapfen/client/stomp'
 class ExampleWorker < Stapfen::Worker
 end
 
+# `exit` is private in 1.9.3 so this is a little hack to add the
+# namespace for java and make that `exit` method public. Since we use
+# it in our tests below.
+module Java
+  module JavaLang
+    class System
+      class << self
+        public :exit
+      end
+    end
+  end
+end
+
 describe Stapfen::Worker do
 
   after(:each) do
@@ -79,6 +92,7 @@ describe Stapfen::Worker do
     end
 
     it 'cleanly exits the worker and java environment' do
+      described_class.const_set(:RUBY_PLATFORM, 'java')
       described_class.workers << example_worker
       expect(Java::JavaLang::System).to receive(:exit).with(0)
       expect(example_worker).to receive(:exit_cleanly)
@@ -94,6 +108,7 @@ describe Stapfen::Worker do
     end
 
     it 'is false if an exception is raised' do
+      described_class.const_set(:RUBY_PLATFORM, 'java')
       expect(Java::JavaLang::System).to receive(:exit).with(0)
       described_class.workers << example_worker
       expect(example_worker).to receive(:exit_cleanly).and_raise(StandardError)
