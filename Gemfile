@@ -10,7 +10,4 @@ group :development do
   gem 'rake'
   gem 'rspec'
   gem 'rspec-its'
-  gem 'pry'
-  gem 'debugger', :platform => :mri
-  gem 'debugger-pry', :platform => :mri
 end
