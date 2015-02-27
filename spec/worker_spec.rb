@@ -372,61 +372,69 @@ describe Stapfen::Worker do
         described_class.class_variable_set(:@@workers, [])
       end
 
-      context 'with just a queue name' do
-        context 'on a failed message' do
-          it 'should not unreceive' do
-            stapfen_client.should_receive(:unreceive).never
-
-            described_class.consume(client_options) {|msg| false }
-            described_class.new.run
+      context 'using stomp' do
+        before do
+          described_class.configure do |w|
+            w.use_stomp!
           end
         end
-        context 'on a successful message' do
-          it 'should not unreceive' do
-            stapfen_client.should_receive(:unreceive).never
 
-            described_class.consume(client_options) {|msg| true }
-            described_class.new.run
+        context 'with just a queue name' do
+          context 'on a failed message' do
+            it 'should not unreceive' do
+              stapfen_client.should_receive(:unreceive).never
+
+              described_class.consume(client_options) {|msg| false }
+              described_class.new.run
+            end
+          end
+          context 'on a successful message' do
+            it 'should not unreceive' do
+              stapfen_client.should_receive(:unreceive).never
+
+              described_class.consume(client_options) {|msg| true }
+              described_class.new.run
+            end
           end
         end
-      end
 
-      context 'with a queue name and headers for a dead_letter_queue and max_redeliveries' do
-        let(:unrec_headers) do
-          { :dead_letter_queue => '/queue/foo',
-          :max_redeliveries => 3 }
-        end
-
-        let(:raw_headers) { unrec_headers.merge(:other_header => 'foo!') }
-        let(:client_options) { {:topic => name}.merge(raw_headers) }
-        let(:config_overrides) { client_options.merge(unrec_headers) }
-        context 'on a failed message' do
-          it 'should unreceive' do
-            stapfen_client.should_receive(:unreceive).once
-
-            described_class.consume(config_overrides) {|msg| false }
-            described_class.new.run
+        context 'with a queue name and headers for a dead_letter_queue and max_redeliveries' do
+          let(:unrec_headers) do
+            { :dead_letter_queue => '/queue/foo',
+            :max_redeliveries => 3 }
           end
-          it 'should pass :unreceive_headers through to the unreceive call' do
-            stapfen_client.should_receive(:unreceive).with(message, config_overrides).once
 
-            described_class.consume(config_overrides) {|msg| false }
-            described_class.new.run
+          let(:raw_headers) { unrec_headers.merge(:other_header => 'foo!') }
+          let(:client_options) { {:topic => name}.merge(raw_headers) }
+          let(:config_overrides) { client_options.merge(unrec_headers) }
+          context 'on a failed message' do
+            it 'should unreceive' do
+              stapfen_client.should_receive(:unreceive).once
+
+              described_class.consume(config_overrides) {|msg| false }
+              described_class.new.run
+            end
+            it 'should pass :unreceive_headers through to the unreceive call' do
+              stapfen_client.should_receive(:unreceive).with(message, config_overrides).once
+
+              described_class.consume(config_overrides) {|msg| false }
+              described_class.new.run
+            end
+            it 'should not remove the unreceive headers from the consumer' do
+              described_class.consume(config_overrides) {|msg| false}
+              described_class.new.run
+
+              expect(described_class.consumers.last[0][:dead_letter_queue]).to eql unrec_headers[:dead_letter_queue]
+              expect(described_class.consumers.last[0][:max_redeliveries]).to eql unrec_headers[:max_redeliveries]
+            end
           end
-          it 'should not remove the unreceive headers from the consumer' do
-            described_class.consume(config_overrides) {|msg| false}
-            described_class.new.run
+          context 'on a successfully handled message' do
+            it 'should not unreceive' do
+              stapfen_client.should_receive(:unreceive).never
 
-            expect(described_class.consumers.last[0][:dead_letter_queue]).to eql unrec_headers[:dead_letter_queue]
-            expect(described_class.consumers.last[0][:max_redeliveries]).to eql unrec_headers[:max_redeliveries]
-          end
-        end
-        context 'on a successfully handled message' do
-          it 'should not unreceive' do
-            stapfen_client.should_receive(:unreceive).never
-
-            described_class.consume(config_overrides) {|msg| true }
-            described_class.new.run
+              described_class.consume(config_overrides) {|msg| true }
+              described_class.new.run
+            end
           end
         end
       end
