@@ -35,7 +35,7 @@ module Stapfen
         unless block_given?
           raise Stapfen::ConsumeError, "Method `consume` requires a block"
         end
-        @consumers ||= []
+        @consumers ||= ThreadSafe::Array.new
         @consumers << [config_overrides, consume_block]
       end
 
@@ -96,7 +96,7 @@ module Stapfen
       # functionality if needed. Useful for testing (see worker_spec.rb).
       def set_class_variable_defaults
         @@signals_handled = false
-        @@workers = []
+        @@workers = ThreadSafe::Array.new
       end
 
     end
