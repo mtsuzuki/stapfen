@@ -6,11 +6,9 @@ require 'rspec/its'
 
 is_java = (RUBY_PLATFORM == 'java')
 
-unless is_java
-  require 'debugger'
-  require 'debugger/pry'
+if is_java
+  require 'hermann/consumer'
 end
-
 
 RSpec.configure do |c|
   c.color = true

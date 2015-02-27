@@ -139,7 +139,7 @@ module Stapfen
     end
 
     def stomp?
-      @protocol.nil? || @protocol == STOMP
+      @protocol == STOMP
     end
 
     # Force the worker to use JMS as the messaging protocol.
@@ -194,16 +194,23 @@ module Stapfen
       @protocol == KAFKA
     end
 
+    def protocol
+      @protocol ||= KAFKA
+    end
+
     def run
-      if stomp?
+      case protocol
+      when STOMP
         require 'stapfen/client/stomp'
         stapfen_client = Stapfen::Client::Stomp.new(client_options)
-      elsif jms?
+      when JMS
         require 'stapfen/client/jms'
         stapfen_client = Stapfen::Client::JMS.new(client_options)
-      elsif kafka?
+      when KAFKA
         require 'stapfen/client/kafka'
         stapfen_client = Stapfen::Client::Kafka.new(client_options)
+      else
+        raise 'No client specified'
       end
 
       logger.info("Running with #{stapfen_client} inside of Thread:#{Thread.current.inspect}")

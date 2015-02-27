@@ -71,8 +71,7 @@ module Stapfen
       #
       # @params [block] block to yield consumed messages
       def subscribe(destination, headers={}, &block)
-        destination = Stapfen::Destination.from_string(destination)
-        connection.consume(destination.as_kafka, &block)
+        connection.consume(destination, &block)
       end
 
       def runloop
