@@ -17,6 +17,8 @@ Gem::Specification.new do |s|
   s.test_files    = s.files.grep(%r{^(test|spec|features)/})
   s.require_paths = ["lib"]
 
+  s.add_dependency 'thread_safe'
+
   if RUBY_PLATFORM == "java"
     s.add_dependency 'hermann', "~> 0.20.0"
     s.platform = 'java'

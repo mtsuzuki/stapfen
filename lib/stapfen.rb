@@ -1,3 +1,5 @@
+require 'thread_safe'
+
 begin
   require 'stomp'
 rescue LoadError
