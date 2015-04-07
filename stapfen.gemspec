@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'thread_safe'
 
   if RUBY_PLATFORM == "java"
-    s.add_dependency 'hermann', "~> 0.20.0"
+    s.add_dependency 'hermann', "~> 0.22.0"
     s.platform = 'java'
   end
 end
