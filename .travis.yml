@@ -1,7 +1,10 @@
 language: ruby
 rvm:
-  - ruby-head
-  - 2.1
-  - 1.9.3
-  - jruby
-
+- ruby-head
+- 2.1
+- 1.9.3
+- jruby
+deploy:
+  provider: rubygems
+  api_key:
+    secure: Nec0EJ9uI21cWjT+e2Yo/MWb03QsQMPk6jMStMcYeTKfNtk/NntPl1LJOQ73JV625QVAItaRzuXDbCfV9Sm2c6zvWJapEJkVp7DAQiZshzKkxSb94N3Uo+Jzgfw0m08Vz6x3af8bLMQgkbcVjLDpbz6L7H2nIf4t1UkJH/I8CeU=

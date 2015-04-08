@@ -5,12 +5,12 @@ require 'stapfen/version'
 
 Gem::Specification.new do |s|
   s.name          = "stapfen"
-  s.version       = Stapfen::VERSION
+  s.version       = [Stapfen::VERSION, ENV['TRAVIS_BUILD_NUMBER'] || 'dev'].join('.')
   s.authors       = ["R. Tyler Croy"]
   s.email         = ["rtyler.croy@lookout.com"]
-  s.description   = "A simple gem for writing good basic STOMP workers"
-  s.summary       = "A simple gem for writing good basic STOMP workers"
-  s.homepage      = ""
+  s.description   = "A simple gem for writing good basic workers"
+  s.summary       = "A simple gem for writing good basic workers"
+  s.homepage      = "https://github.com/lookout/stapfen"
 
   s.files         = `git ls-files`.split($/)
   s.executables   = s.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
