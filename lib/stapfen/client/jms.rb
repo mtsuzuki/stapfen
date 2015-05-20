@@ -101,9 +101,9 @@ module Stapfen
       # @option unreceive_headers [String] :dead_letter_queue After giving up on
       #   redelivering, send the message here.
       def unreceive(message, unreceive_headers)
-        return if unreceive_headers[:max_redeliveries].nil? && unreceive_headers[:max_redeliveries].nil?
+        return if unreceive_headers[:max_redeliveries].nil? && unreceive_headers[:dead_letter_queue].nil?
 
-        destination = message.destination.to_s.sub('queue://','/queue/').sub('topic://','/topic')
+        destination = message.destination.to_s.sub('queue://','/queue/').sub('topic://','/topic/')
         retry_count = message.getStringProperty('retry_count').to_i || 0
         retry_count +=1
 

@@ -20,21 +20,47 @@ if RUBY_PLATFORM == 'java'
       let(:message) { double('Message', :destination => orig_destination, :data => body, :getStringProperty => nil) }
       let(:max_redeliveries) { 2 }
       let(:dlq) { '/queue/some_queue/dlq' }
-      let(:unreceive_headers) do
-        { :dead_letter_queue => dlq, :max_redeliveries => max_redeliveries }
-      end
+
       let(:orig_destination) { '/queue/some_queue' }
 
       subject(:unreceive!) { client.unreceive(message, unreceive_headers) }
 
-      context 'with no unreceive[:max_redeliveries] or unreceive[:dead_letter_queue]' do
+      context 'with no unreceive[:dead_letter_queue] and no unreceive[:max_redeliveries]' do
         let(:unreceive_headers) { Hash.new }
-
         it 'should not resend the message' do
           client.should_not_receive(:publish)
+          unreceive!
+        end
+      end
+
+      context 'with no unreceive[:max_redeliveries]' do
+        let(:unreceive_headers) do
+          { dead_letter_queue: '/queue/some_queue/dlq' }
+        end
+
+        it 'should resend the message' do
+          client.should_receive(:publish) do |dest, the_body, the_headers|
+            expect(dest).to eql '/queue/some_queue/dlq'
+          end
+          unreceive!
+        end
+      end
+
+      context 'with no unreceive[:dead_letter_queue]' do
+        let(:unreceive_headers) { { max_redeliveries: 2 } }
+
+        it 'should resend the message' do
+          client.should_receive(:publish) do |dest, the_body, the_headers|
+            expect(dest).to eql orig_destination
+            expect(the_body).to eql body
+          end
 
           unreceive!
         end
+      end
+
+      let(:unreceive_headers) do
+        { :dead_letter_queue => dlq, :max_redeliveries => max_redeliveries }
       end
 
       context 'On a message with no retry_count in the headers' do
@@ -61,13 +87,11 @@ if RUBY_PLATFORM == 'java'
 
         context 'that is less than max_redeliveries' do
          let(:retry_count) { max_redeliveries - 1 }
-
+          puts "IN 'that is less than max_redeliveries' CONTEXT"
           it 'should publish it to the same destination with a retry_count increased by one' do
             client.should_receive(:publish) do |dest, the_body, the_headers|
               expect(dest).to eql orig_destination
               expect(the_body).to eql body
-
-
               expect(the_headers).to eql({'retry_count' => (retry_count + 1).to_s})
             end
 
@@ -83,7 +107,6 @@ if RUBY_PLATFORM == 'java'
             client.should_receive(:publish) do |dest, the_body, the_headers|
               expect(the_body).to eql body
               expect(dest).to eql dlq
-
               expect(the_headers).to eql({:original_destination => orig_destination})
             end
 
@@ -102,6 +125,32 @@ if RUBY_PLATFORM == 'java'
               expect(the_headers).to eql({:original_destination => orig_destination})
             end
 
+            unreceive!
+          end
+        end
+
+        context 'with a topic url destination' do
+          let(:retry_count) { max_redeliveries + 1 }
+          let(:orig_destination) { 'topic://some_queue' }
+          it 'should succeed' do
+            client.should_receive(:publish) do |dest, the_body, the_headers|
+              expect(the_body).to eql body
+              expect(dest).to eql dlq
+              expect(the_headers).to eql({:original_destination => '/topic/some_queue'})
+            end
+            unreceive!
+          end
+        end
+
+        context 'with a queue url destination' do
+          let(:retry_count) { max_redeliveries + 1 }
+          let(:orig_destination) { 'queue://some_queue' }
+          it 'should succeed' do
+            client.should_receive(:publish) do |dest, the_body, the_headers|
+              expect(the_body).to eql body
+              expect(dest).to eql dlq
+              expect(the_headers).to eql({:original_destination => '/queue/some_queue'})
+            end
             unreceive!
           end
         end
