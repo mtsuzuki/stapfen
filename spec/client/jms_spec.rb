@@ -87,7 +87,6 @@ if RUBY_PLATFORM == 'java'
 
         context 'that is less than max_redeliveries' do
          let(:retry_count) { max_redeliveries - 1 }
-          puts "IN 'that is less than max_redeliveries' CONTEXT"
           it 'should publish it to the same destination with a retry_count increased by one' do
             client.should_receive(:publish) do |dest, the_body, the_headers|
               expect(dest).to eql orig_destination
